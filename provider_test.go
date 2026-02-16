@@ -71,7 +71,7 @@ func TestPullConfigFetch_StringResult(t *testing.T) {
 	}
 
 	if len(ips) != 1 || ips[0] != "1.2.3.4/32" {
-		t.Fatalf("expected single IP, got %v", ips)
+		t.Fatalf("expected single IP, got: %v", ips)
 	}
 }
 
@@ -81,7 +81,7 @@ func TestPullConfigFetch_UnexpectedType(t *testing.T) {
 
 	_, err := provider.Fetch(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "unexpected result type") {
-		t.Fatalf("expected unexpected type error, got %v", err)
+		t.Fatalf("expected unexpected type error, got: %v", err)
 	}
 }
 
@@ -90,8 +90,8 @@ func TestPullConfigFetch_ArrayWithNonString(t *testing.T) {
 	provider := PullConfig{URL: server.URL, JMESPath: "items"}
 
 	_, err := provider.Fetch(context.Background())
-	if err == nil || !strings.Contains(err.Error(), "unexpected IP type") {
-		t.Fatalf("expected unexpected IP type error, got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "invalid IP prefix") {
+		t.Fatalf("expected invalid IP prefix error, got: %v", err)
 	}
 }
 
@@ -100,7 +100,7 @@ func TestProviderFetch_NoPrefixes(t *testing.T) {
 
 	_, _, err := provider.Fetch(context.Background())
 	if err == nil || !strings.Contains(err.Error(), "no prefixes found") {
-		t.Fatalf("expected no prefixes error, got %v", err)
+		t.Fatalf("expected no prefixes error, got: %v", err)
 	}
 }
 
@@ -120,10 +120,10 @@ func TestProviderFetch_URLs(t *testing.T) {
 	}
 
 	if len(v4) != 2 {
-		t.Fatalf("expected 2 IPv4 prefixes, got %d", len(v4))
+		t.Fatalf("expected 2 IPv4 prefixes, got: %d", len(v4))
 	}
 
 	if len(v6) != 1 {
-		t.Fatalf("expected 1 IPv6 prefix, got %d", len(v6))
+		t.Fatalf("expected 1 IPv6 prefix, got: %d", len(v6))
 	}
 }

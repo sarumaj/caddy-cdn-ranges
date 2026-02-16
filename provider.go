@@ -79,16 +79,20 @@ func (u PullConfig) Fetch(ctx context.Context) ([]string, error) {
 	case reflect.Slice, reflect.Array:
 		var ipList []string
 		for i := 0; i < v.Len(); i++ {
-			ip, ok := v.Index(i).Interface().(string)
-			if !ok {
-				return nil, fmt.Errorf("unexpected IP type: %T", v.Index(i).Interface())
+			ip := fmt.Sprintf("%v", v.Index(i).Interface())
+			if _, err := caddyhttp.CIDRExpressionToPrefix(ip); err != nil {
+				return nil, fmt.Errorf("invalid IP prefix %s: %w", ip, err)
 			}
 			ipList = append(ipList, ip)
 		}
 		return ipList, nil
 
 	case reflect.String:
-		return []string{result.(string)}, nil
+		ip := fmt.Sprintf("%v", result)
+		if _, err := caddyhttp.CIDRExpressionToPrefix(ip); err != nil {
+			return nil, fmt.Errorf("invalid IP prefix %s: %w", ip, err)
+		}
+		return []string{ip}, nil
 
 	default:
 		return nil, fmt.Errorf("unexpected result type: %T", result)
