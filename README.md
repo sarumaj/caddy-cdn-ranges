@@ -184,6 +184,33 @@ If fetching takes too long:
 - Increase `interval` to fetch less frequently
 - Reduce the number of providers being fetched
 
+## Build with xcaddy or custom image
+
+<!-- cSpell: words xcaddy sarumaj gotoolchain -->
+
+Use `xcaddy` to build a Caddy binary that includes this module:
+
+```bash
+xcaddy build \
+  --with github.com/sarumaj/caddy-cdn-ranges
+```
+
+Example Dockerfile that builds a custom Caddy image with this module:
+
+```dockerfile
+FROM caddy:2.11-builder-alpine AS builder
+
+WORKDIR /build
+
+ENV GOTOOLCHAIN=go1.25.0
+
+RUN xcaddy build \
+  --with github.com/sarumaj/caddy-cdn-ranges
+
+FROM caddy:2.11-alpine
+COPY --from=builder /build/caddy /usr/bin/caddy
+```
+
 ## Notes
 
 - The module reuses its fetched ranges for all requests until the next refresh.
