@@ -9,8 +9,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/jmespath/go-jmespath"            // cSpell: words jmespath
-	cdn_ranges "github.com/taythebot/cdn-ranges" // cSpell: words taythebot
+	"github.com/caddyserver/caddy/v2/modules/caddyhttp" // cSpell: words caddyhttp caddyserver
+	"github.com/jmespath/go-jmespath"                   // cSpell: words jmespath
+	cdn_ranges "github.com/taythebot/cdn-ranges"        // cSpell: words taythebot
 	"github.com/taythebot/cdn-ranges/provider"
 )
 
@@ -113,24 +114,31 @@ func (c *Provider) Fetch(ctx context.Context) ([]string, []string, error) {
 		if err != nil {
 			return nil, nil, err
 		}
-		v4 = append(v4, asn_v4...)
-		v6 = append(v6, asn_v6...)
+
+		parsed4, parsed6, err := parseIPs(append(asn_v4, asn_v6...))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse ASN prefixes for ASN %d: %w", asn, err)
+		}
+
+		v4 = append(v4, parsed4...)
+		v6 = append(v6, parsed6...)
 	}
 
-	if c.IPv4_URL != nil {
-		ips, err := c.IPv4_URL.Fetch(ctx)
-		if err != nil {
-			return nil, nil, err
-		}
-		v4 = append(v4, ips...)
-	}
+	for _, urlProvider := range []*PullConfig{c.IPv4_URL, c.IPv6_URL} {
+		if urlProvider != nil {
+			ips, err := urlProvider.Fetch(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
 
-	if c.IPv6_URL != nil {
-		ips, err := c.IPv6_URL.Fetch(ctx)
-		if err != nil {
-			return nil, nil, err
+			parsed4, parsed6, err := parseIPs(ips)
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to parse IPs from provider %s: %w", c.ProviderName, err)
+			}
+
+			v4 = append(v4, parsed4...)
+			v6 = append(v6, parsed6...)
 		}
-		v6 = append(v6, ips...)
 	}
 
 	if len(v4)+len(v6) == 0 {
@@ -138,6 +146,28 @@ func (c *Provider) Fetch(ctx context.Context) ([]string, []string, error) {
 	}
 
 	return v4, v6, nil
+}
+
+func parseIPs(in []string) (out4 []string, out6 []string, error error) {
+	for _, ip := range in {
+		parsed, err := caddyhttp.CIDRExpressionToPrefix(ip) // Validate CIDR format
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse IP prefix %s: %w", ip, err)
+		}
+
+		if parsed.Addr().Is4() {
+			out4 = append(out4, parsed.String())
+		} else if parsed.Addr().Is4In6() {
+			out4 = append(out4, parsed.Addr().Unmap().String()+"/32")
+			out6 = append(out6, parsed.String())
+		} else if parsed.Addr().Is6() {
+			out6 = append(out6, parsed.String())
+		} else {
+			return nil, nil, fmt.Errorf("invalid IP address %s", ip)
+		}
+	}
+
+	return out4, out6, nil
 }
 
 // Type Guard

@@ -21,16 +21,41 @@ func init() {
 	caddy.RegisterModule(CaddyTrustedProxiesCDN{})
 }
 
+// CaddyTrustedProxiesCDN is a Caddy module that fetches trusted proxy IP ranges from
+// various CDN providers and makes them available for use in Caddy's IP source configuration.
+// It uses a provider abstraction to support multiple CDN providers and can be configured with custom providers as well.
+//
+// Example Caddyfile configuration:
+//
+//	http {
+//	    ip_source trusted_proxies_cdn_ranges {
+//	        interval 12h
+//	        provider cloudflare
+//	        provider cloudfront
+//	        provider custom_provider {
+//	            ipv4_url https://example.com/ipv4.json @
+//	            ipv6_url https://example.com/ipv6.json @
+//	        }
+//	        concurrency 5
+//	        ipv4 true
+//	        ipv6 false
+//	    }
+//	}
 type CaddyTrustedProxiesCDN struct {
-	// Interval to update the trusted proxies list. default: 1d
-	Interval    caddy.Duration `json:"interval,omitempty"`
-	Providers   []any          `json:"provider,omitempty"`
-	Concurrency int            `json:"concurrency,omitempty"`
-	IPv4        *bool          `json:"ipv4,omitempty"`
-	IPv6        *bool          `json:"ipv6,omitempty"`
-	ranges      []netip.Prefix
-	ctx         caddy.Context
-	lock        *sync.RWMutex
+	// Interval to update the trusted proxies list. default: 24h
+	Interval caddy.Duration `json:"interval,omitempty"`
+	// List of providers to fetch IP ranges from. If empty, all built-in providers will be used.
+	Providers []any `json:"provider,omitempty"`
+	// Number of concurrent fetches to perform when updating the IP ranges. default: 5
+	Concurrency int `json:"concurrency,omitempty"`
+	// Whether to include IPv4 ranges. default: true if both IPv4 and IPv6 are not explicitly set
+	IPv4 *bool `json:"ipv4,omitempty"`
+	// Whether to include IPv6 ranges. default: true if both IPv4 and IPv6 are not explicitly set
+	IPv6 *bool `json:"ipv6,omitempty"`
+
+	ranges []netip.Prefix
+	ctx    caddy.Context
+	lock   *sync.RWMutex
 }
 
 func (CaddyTrustedProxiesCDN) CaddyModule() caddy.ModuleInfo {
@@ -47,7 +72,7 @@ func (s *CaddyTrustedProxiesCDN) setIPv6(value bool) { s.IPv6 = &value }
 
 func (s *CaddyTrustedProxiesCDN) Provision(ctx caddy.Context) error {
 	s.ctx = ctx
-	
+
 	if s.lock == nil {
 		s.lock = &sync.RWMutex{}
 	}
@@ -129,7 +154,7 @@ func (s *CaddyTrustedProxiesCDN) fetchPrefixes() ([]netip.Prefix, error) {
 				}
 
 				for _, prefixStr := range rawPrefixes {
-					prefix, err := netip.ParsePrefix(prefixStr)
+					prefix, err := caddyhttp.CIDRExpressionToPrefix(prefixStr)
 					if err != nil {
 						return fmt.Errorf("failed to parse prefix %s from provider %s: %w", prefixStr, p.Name(), err)
 					}
