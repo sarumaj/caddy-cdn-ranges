@@ -14,7 +14,7 @@ jobs:
         go: [1.25]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    name: Build and release gh-gr
+    name: Release caddy-cdn-ranges
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -51,6 +51,15 @@ jobs:
           add-prefix: ${{ steps.export_module_name.outputs.MODULE_NAME }}
           verbose: true
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+
+      - name: Create release from tag # cSpell: words ncipollo
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          generateReleaseNotes: true
+          makeLatest: true
+          tag: ${{ github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update code documentation
         run: curl -fsSL https://proxy.golang.org/${{ steps.export_module_name.outputs.MODULE_NAME }}/@v/${{ github.ref_name }}.info

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/netip"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func TestUnmarshalCaddyfile_Interval(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	err := module.UnmarshalCaddyfile(d)
 	if err != nil {
@@ -86,7 +87,7 @@ func TestUnmarshalCaddyfile_Providers(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	err := module.UnmarshalCaddyfile(d)
 	if err != nil {
@@ -112,7 +113,7 @@ func TestUnmarshalCaddyfile_Concurrency(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	err := module.UnmarshalCaddyfile(d)
 	if err != nil {
@@ -169,7 +170,7 @@ func TestUnmarshalCaddyfile_IPv4IPv6(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			d := caddyfile.NewTestDispenser(tt.input)
-			module := &CaddyTrustedProxiesCDN{}
+			module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 			err := module.UnmarshalCaddyfile(d)
 			if err != nil {
@@ -197,7 +198,7 @@ func TestUnmarshalCaddyfile_Complete(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	err := module.UnmarshalCaddyfile(d)
 	if err != nil {
@@ -238,7 +239,7 @@ func TestUnmarshalCaddyfile_CustomProvider(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	if err := module.UnmarshalCaddyfile(d); err != nil {
 		t.Fatalf("UnmarshalCaddyfile failed: %v", err)
@@ -285,7 +286,7 @@ func TestUnmarshalCaddyfile_CustomProviderEmptyASNList(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	if err := module.UnmarshalCaddyfile(d); err != nil {
 		t.Fatalf("UnmarshalCaddyfile failed: %v", err)
@@ -308,7 +309,7 @@ func TestUnmarshalCaddyfile_ProviderBlockMixed(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	if err := module.UnmarshalCaddyfile(d); err != nil {
 		t.Fatalf("UnmarshalCaddyfile failed: %v", err)
@@ -340,7 +341,7 @@ func TestUnmarshalCaddyfile_ProviderBlockUnexpectedArgs(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	err := module.UnmarshalCaddyfile(d)
 	if err == nil || !strings.Contains(err.Error(), "unexpected arguments for provider") {
@@ -358,7 +359,7 @@ func TestUnmarshalCaddyfile_CustomProviderASNListBrackets(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	if err := module.UnmarshalCaddyfile(d); err != nil {
 		t.Fatalf("UnmarshalCaddyfile failed: %v", err)
@@ -374,7 +375,7 @@ func TestUnmarshalCaddyfile_InvalidArgument(t *testing.T) {
 	input := `trusted_proxies_cdn_ranges unexpected_arg`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	err := module.UnmarshalCaddyfile(d)
 	if err == nil {
@@ -388,7 +389,7 @@ func TestUnmarshalCaddyfile_InvalidOption(t *testing.T) {
 	}`
 
 	d := caddyfile.NewTestDispenser(input)
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	err := module.UnmarshalCaddyfile(d)
 	if err == nil {
@@ -402,6 +403,7 @@ func TestFetchPrefixes_AllProviders(t *testing.T) {
 	}
 
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{"cloudflare", "cloudfront"},
 		Concurrency: 5,
 		IPv4:        boolPtr(true),
@@ -432,6 +434,7 @@ func TestFetchPrefixes_SpecificProvider(t *testing.T) {
 
 	// Test with Cloudflare which is known to be available
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{"cloudflare"},
 		Concurrency: 3,
 		IPv4:        boolPtr(true),
@@ -466,6 +469,7 @@ func TestFetchPrefixes_SpecificProvider(t *testing.T) {
 
 func TestFetchPrefixes_InvalidProvider(t *testing.T) {
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{"nonexistent_provider"},
 		Concurrency: 3,
 		IPv4:        boolPtr(true),
@@ -488,6 +492,7 @@ func TestFetchPrefixes_CaseInsensitive(t *testing.T) {
 	}
 
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{"CLOUDFLARE", "CloudFront"},
 		Concurrency: 3,
 		IPv4:        boolPtr(true),
@@ -510,6 +515,7 @@ func TestFetchPrefixes_IPv4Only(t *testing.T) {
 	}
 
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{"cloudflare"},
 		Concurrency: 3,
 		IPv4:        boolPtr(true),
@@ -539,6 +545,7 @@ func TestFetchPrefixes_IPv6Only(t *testing.T) {
 	}
 
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{"cloudflare"},
 		Concurrency: 3,
 		IPv4:        boolPtr(false),
@@ -569,6 +576,7 @@ func TestFetchPrefixes_HighConcurrency(t *testing.T) {
 
 	// Test with concurrency higher than number of providers
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{"cloudflare", "cloudfront"},
 		Concurrency: 10,
 		IPv4:        boolPtr(true),
@@ -586,7 +594,7 @@ func TestFetchPrefixes_HighConcurrency(t *testing.T) {
 }
 
 func TestGetIPRanges(t *testing.T) {
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 
 	// Set some test ranges
 	testPrefix := netip.MustParsePrefix("192.0.2.0/24")
@@ -604,7 +612,7 @@ func TestGetIPRanges(t *testing.T) {
 }
 
 func TestProvision_Defaults(t *testing.T) {
-	module := &CaddyTrustedProxiesCDN{}
+	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
 	ctx, cancel := caddy.NewContext(caddy.Context{Context: t.Context()})
 	defer cancel()
 
@@ -639,6 +647,7 @@ func TestProviderNamesAvailable(t *testing.T) {
 
 func TestFetchPrefixes_CustomProvider(t *testing.T) {
 	module := &CaddyTrustedProxiesCDN{
+		lock: &sync.RWMutex{},
 		Providers: []any{&testProvider{
 			name: "Custom",
 			v4:   []string{"203.0.113.0/24"},
@@ -662,6 +671,7 @@ func TestFetchPrefixes_CustomProvider(t *testing.T) {
 
 func TestFetchPrefixes_MixedProviders(t *testing.T) {
 	module := &CaddyTrustedProxiesCDN{
+		lock: &sync.RWMutex{},
 		Providers: []any{
 			"cloudflare",
 			&testProvider{name: "Custom", v4: []string{"198.51.100.0/24"}},
@@ -684,6 +694,7 @@ func TestFetchPrefixes_MixedProviders(t *testing.T) {
 
 func TestFetchPrefixes_UnsupportedProviderType(t *testing.T) {
 	module := &CaddyTrustedProxiesCDN{
+		lock:        &sync.RWMutex{},
 		Providers:   []any{123},
 		Concurrency: 1,
 		IPv4:        boolPtr(true),

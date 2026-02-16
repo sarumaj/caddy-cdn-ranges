@@ -18,7 +18,7 @@ import (
 )
 
 func init() {
-	caddy.RegisterModule(&CaddyTrustedProxiesCDN{})
+	caddy.RegisterModule(CaddyTrustedProxiesCDN{})
 }
 
 type CaddyTrustedProxiesCDN struct {
@@ -30,13 +30,13 @@ type CaddyTrustedProxiesCDN struct {
 	IPv6        *bool          `json:"ipv6,omitempty"`
 	ranges      []netip.Prefix
 	ctx         caddy.Context
-	lock        sync.RWMutex
+	lock        *sync.RWMutex
 }
 
-func (*CaddyTrustedProxiesCDN) CaddyModule() caddy.ModuleInfo {
+func (CaddyTrustedProxiesCDN) CaddyModule() caddy.ModuleInfo {
 	return caddy.ModuleInfo{
 		ID:  "http.ip_sources.trusted_proxies_cdn_ranges",
-		New: func() caddy.Module { return &CaddyTrustedProxiesCDN{} },
+		New: func() caddy.Module { return new(CaddyTrustedProxiesCDN) },
 	}
 }
 
@@ -47,6 +47,10 @@ func (s *CaddyTrustedProxiesCDN) setIPv6(value bool) { s.IPv6 = &value }
 
 func (s *CaddyTrustedProxiesCDN) Provision(ctx caddy.Context) error {
 	s.ctx = ctx
+	
+	if s.lock == nil {
+		s.lock = &sync.RWMutex{}
+	}
 
 	if s.Interval == 0 {
 		s.Interval = caddy.Duration(24 * time.Hour) // default to 24 hours
@@ -212,6 +216,10 @@ func (s *CaddyTrustedProxiesCDN) resolveProviders() ([]provider.Provider, error)
 }
 
 func (s *CaddyTrustedProxiesCDN) GetIPRanges(_ *http.Request) []netip.Prefix {
+	if s.lock == nil {
+		s.lock = &sync.RWMutex{}
+	}
+
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 	return s.ranges
