@@ -71,7 +71,7 @@ Custom provider block form:
 
 ## Provider names
 
-Provider names come from the `cdn-ranges` library. Use the provider names listed in that project (see [CDN PRoviders](https://github.com/taythebot/cdn-ranges/tree/main?tab=readme-ov-file#cdn-providers)).
+Provider names come from the `cdn-ranges` library. Use the provider names listed in that project (see [CDN Providers](https://github.com/taythebot/cdn-ranges/tree/main?tab=readme-ov-file#cdn-providers)).
 
 ## Notes
 
