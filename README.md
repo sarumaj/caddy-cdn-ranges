@@ -17,17 +17,17 @@ This module periodically fetches IP ranges from the `cdn-ranges` providers list 
 
 ```caddyfile
 {
-	servers {
-		trusted_proxies {
-			source trusted_proxies_cdn_ranges {
-				interval 24h
-				provider cloudflare cloudfront
-				concurrency 5
-				ipv4 true
-				ipv6 true
-			}
-		}
-	}
+  servers {
+    trusted_proxies {
+      source trusted_proxies_cdn_ranges {
+        interval 24h
+        provider cloudflare cloudfront
+        concurrency 5
+        ipv4 true
+        ipv6 true
+      }
+    }
+  }
 }
 ```
 
@@ -35,20 +35,20 @@ Custom provider block form:
 
 ```caddyfile
 {
-	servers {
-		trusted_proxies {
-			source trusted_proxies_cdn_ranges {
-				provider {
-					cloudflare
-					custom_cdn {
-						ipv4_url https://example.com/ipv4
-						ipv6_url https://example.com/ipv6 items
-						asn_list [13335, 20940]
-					}
-				}
-			}
-		}
-	}
+  servers {
+    trusted_proxies {
+      source trusted_proxies_cdn_ranges {
+        provider {
+          cloudflare
+          custom_cdn {
+            ipv4_url https://example.com/ipv4
+            ipv6_url https://example.com/ipv6 items
+            asn_list [13335, 20940]
+          }
+        }
+      }
+    }
+  }
 }
 ```
 
