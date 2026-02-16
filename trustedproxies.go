@@ -21,36 +21,100 @@ func init() {
 	caddy.RegisterModule(CaddyTrustedProxiesCDN{})
 }
 
-// CaddyTrustedProxiesCDN is a Caddy module that fetches trusted proxy IP ranges from
-// various CDN providers and makes them available for use in Caddy's IP source configuration.
-// It uses a provider abstraction to support multiple CDN providers and can be configured with custom providers as well.
+// CaddyTrustedProxiesCDN is a Caddy IP source module that automatically fetches and maintains
+// a list of trusted proxy IP ranges from CDN and cloud providers. It periodically updates the
+// IP ranges and makes them available to Caddy's trusted proxies configuration.
 //
-// Example Caddyfile configuration:
+// The module supports:
+//   - Built-in providers (Cloudflare, AWS CloudFront, Google Cloud, etc.) from the cdn-ranges library
+//   - Custom providers with configurable URL endpoints and JMESPath filters
+//   - Autonomous System Number (ASN) based IP range lookups
+//   - Both JSON and plain text response formats
+//   - Separate IPv4 and IPv6 filtering
+//   - Concurrent fetching for improved performance
 //
-//	http {
-//	    ip_source trusted_proxies_cdn_ranges {
-//	        interval 12h
-//	        provider cloudflare
-//	        provider cloudfront
-//	        provider custom_provider {
-//	            ipv4_url https://example.com/ipv4.json @
-//	            ipv6_url https://example.com/ipv6.json @
-//	        }
-//	        concurrency 5
-//	        ipv4 true
-//	        ipv6 false
-//	    }
+// The module implements:
+//   - caddy.Module: Caddy module registration
+//   - caddy.Provisioner: Initialization and background refresh scheduling
+//   - caddyfile.Unmarshaler: Caddyfile configuration parsing
+//   - caddyhttp.IPRangeSource: HTTP source for trusted proxies
+//
+// Example Caddyfile configuration (short form):
+//
+//	servers {
+//		trusted_proxies {
+//			source trusted_proxies_cdn_ranges {
+//				interval 24h
+//				provider cloudflare cloudfront
+//				concurrency 5
+//				ipv4 true
+//				ipv6 true
+//			}
+//		}
+//	}
+//
+// Example with custom provider (block form):
+//
+//	servers {
+//		trusted_proxies {
+//			source trusted_proxies_cdn_ranges {
+//				provider {
+//					cloudflare
+//					custom_cdn {
+//						ipv4_url https://api.example.com/ipv4.json "prefixes[].cidr"
+//						ipv6_url https://api.example.com/ipv6.json "prefixes[].cidr"
+//						asn_list 13335 20940
+//					}
+//				}
+//			}
+//		}
 //	}
 type CaddyTrustedProxiesCDN struct {
-	// Interval to update the trusted proxies list. default: 24h
+	// Interval is the duration between refreshes of the IP ranges list. Defaults to 24 hours.
+	// The module fetches updated ranges from providers at this interval. Set to smaller values
+	// for more frequent updates (at the cost of increased network requests) or larger values
+	// to reduce update frequency.
+	// Examples: "12h", "1h", "30m"
 	Interval caddy.Duration `json:"interval,omitempty"`
-	// List of providers to fetch IP ranges from. If empty, all built-in providers will be used.
+
+	// Providers is a list of providers to fetch IP ranges from. Each element can be:
+	//   - A string: built-in provider name (e.g., "cloudflare", "cloudfront")
+	//   - A *Provider: custom provider with URL endpoints and/or ASN lookups
+	//
+	// Built-in providers are matched case-insensitively. If this list is empty,
+	// all available built-in providers from the cdn-ranges library will be used.
+	// If specified providers are not found, the module will fail during provisioning.
+	//
+	// Example: providers cloudflare cloudfront
+	//
+	// Example with custom provider:
+	//
+	// 	providers {
+	// 		cloudflare
+	// 		custom_cdn {
+	// 			ipv4_url https://api.example.com/ipv4.json "prefixes[].cidr"
+	// 			ipv6_url https://api.example.com/ipv6.json "prefixes[].cidr"
+	// 			asn_list 13335 20940
+	// 		}
+	// }
 	Providers []any `json:"provider,omitempty"`
-	// Number of concurrent fetches to perform when updating the IP ranges. default: 5
+
+	// Concurrency is the number of concurrent goroutines used to fetch IP ranges from providers.
+	// Higher values speed up updates but use more resources. Defaults to 5.
+	// Set to 1 for sequential fetching or increase for faster parallel updates.
+	// Recommended values: 3-10 depending on provider availability and network conditions.
 	Concurrency int `json:"concurrency,omitempty"`
-	// Whether to include IPv4 ranges. default: true if both IPv4 and IPv6 are not explicitly set
+
+	// IPv4 controls whether IPv4 CIDR blocks are included in the trusted proxies list.
+	// If nil (not set), it defaults to true (unless IPv6 is also nil, then both default to true).
+	// Set to false to exclude IPv4 ranges. Useful if you only trust IPv6 proxies.
+	// Examples: true (enable IPv4), false (disable IPv4)
 	IPv4 *bool `json:"ipv4,omitempty"`
-	// Whether to include IPv6 ranges. default: true if both IPv4 and IPv6 are not explicitly set
+
+	// IPv6 controls whether IPv6 CIDR blocks are included in the trusted proxies list.
+	// If nil (not set), it defaults to true (unless IPv4 is also nil, then both default to true).
+	// Set to false to exclude IPv6 ranges. Useful if you only trust IPv4 proxies.
+	// Examples: true (enable IPv6), false (disable IPv6)
 	IPv6 *bool `json:"ipv6,omitempty"`
 
 	ranges []netip.Prefix

@@ -694,7 +694,6 @@ func TestFetchPrefixes_MixedProviders(t *testing.T) {
 
 func TestFetchPrefixes_UnsupportedProviderType(t *testing.T) {
 	module := &CaddyTrustedProxiesCDN{
-		lock:        &sync.RWMutex{},
 		Providers:   []any{123},
 		Concurrency: 1,
 		IPv4:        boolPtr(true),
