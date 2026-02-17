@@ -87,7 +87,7 @@ provider {
 - `prefixes[].cidr`: Extract the `cidr` field from each item in the `prefixes` array
 - `data.networks`: Navigate nested objects
 
-See [JMESPath Reference](https://jmespath.org/reference.html) for more complex queries.
+See [JMESPath Specification](https://jmespath.org/specification.html) for more complex queries.
 
 ### Plain Text Response
 
