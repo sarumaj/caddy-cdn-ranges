@@ -37,7 +37,7 @@ func init() {
 //
 //	servers {
 //		trusted_proxies {
-//			source trusted_proxies_cdn_ranges {
+//			source cdn_ranges {
 //				interval 24h
 //				provider cloudflare cloudfront
 //				concurrency 5
@@ -51,7 +51,7 @@ func init() {
 //
 //	servers {
 //		trusted_proxies {
-//			source trusted_proxies_cdn_ranges {
+//			source cdn_ranges {
 //				provider {
 //					cloudflare
 //					custom_cdn {
@@ -118,7 +118,7 @@ type CaddyTrustedProxiesCDN struct {
 
 func (CaddyTrustedProxiesCDN) CaddyModule() caddy.ModuleInfo {
 	return caddy.ModuleInfo{
-		ID:  "http.ip_sources.trusted_proxies_cdn_ranges",
+		ID:  "http.ip_sources.cdn_ranges",
 		New: func() caddy.Module { return new(CaddyTrustedProxiesCDN) },
 	}
 }

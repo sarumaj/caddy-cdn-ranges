@@ -30,7 +30,7 @@ Trusted proxies are critical for applications behind reverse proxies or load bal
 {
   servers {
     trusted_proxies {
-      source trusted_proxies_cdn_ranges {
+      source cdn_ranges {
         interval 24h
         provider cloudflare cloudfront
         concurrency 5
@@ -48,7 +48,7 @@ Custom provider block form:
 {
   servers {
     trusted_proxies {
-      source trusted_proxies_cdn_ranges {
+      source cdn_ranges {
         provider {
           cloudflare
           custom_cdn {
@@ -87,7 +87,7 @@ provider {
 - `prefixes[].cidr`: Extract the `cidr` field from each item in the `prefixes` array
 - `data.networks`: Navigate nested objects
 
-See [JMESPath Reference](https://jmespath.org/reference.html) for more complex queries.
+See [JMESPath Specification](https://jmespath.org/specification.html) for more complex queries.
 
 ### Plain Text Response
 

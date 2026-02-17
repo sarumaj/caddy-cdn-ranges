@@ -48,8 +48,8 @@ func TestCaddyModule(t *testing.T) {
 	module := CaddyTrustedProxiesCDN{}
 	info := module.CaddyModule()
 
-	if info.ID != "http.ip_sources.trusted_proxies_cdn_ranges" {
-		t.Errorf("Expected module ID 'http.ip_sources.trusted_proxies_cdn_ranges', got '%s'", info.ID)
+	if info.ID != "http.ip_sources.cdn_ranges" {
+		t.Errorf("Expected module ID 'http.ip_sources.cdn_ranges', got '%s'", info.ID)
 	}
 
 	if info.New == nil {
@@ -63,7 +63,7 @@ func TestCaddyModule(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_Interval(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		interval 2h
 	}`
 
@@ -82,7 +82,7 @@ func TestUnmarshalCaddyfile_Interval(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_Providers(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		provider cloudflare cloudfront
 	}`
 
@@ -108,7 +108,7 @@ func TestUnmarshalCaddyfile_Providers(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_Concurrency(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		concurrency 10
 	}`
 
@@ -134,7 +134,7 @@ func TestUnmarshalCaddyfile_IPv4IPv6(t *testing.T) {
 	}{
 		{
 			name: "IPv4 enabled",
-			input: `trusted_proxies_cdn_ranges {
+			input: `cdn_ranges {
 				ipv4 true
 			}`,
 			wantIPv4: boolPtr(true),
@@ -142,7 +142,7 @@ func TestUnmarshalCaddyfile_IPv4IPv6(t *testing.T) {
 		},
 		{
 			name: "IPv4 disabled",
-			input: `trusted_proxies_cdn_ranges {
+			input: `cdn_ranges {
 				ipv4 false
 			}`,
 			wantIPv4: boolPtr(false),
@@ -150,7 +150,7 @@ func TestUnmarshalCaddyfile_IPv4IPv6(t *testing.T) {
 		},
 		{
 			name: "IPv6 enabled",
-			input: `trusted_proxies_cdn_ranges {
+			input: `cdn_ranges {
 				ipv6 true
 			}`,
 			wantIPv4: nil,
@@ -158,7 +158,7 @@ func TestUnmarshalCaddyfile_IPv4IPv6(t *testing.T) {
 		},
 		{
 			name: "Both configured",
-			input: `trusted_proxies_cdn_ranges {
+			input: `cdn_ranges {
 				ipv4 true
 				ipv6 false
 			}`,
@@ -189,7 +189,7 @@ func TestUnmarshalCaddyfile_IPv4IPv6(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_Complete(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		interval 30m
 		provider cloudflare
 		concurrency 3
@@ -228,7 +228,7 @@ func TestUnmarshalCaddyfile_Complete(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_CustomProvider(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		provider {
 			custom {
 				ipv4_url https://example.com/ipv4
@@ -276,7 +276,7 @@ func TestUnmarshalCaddyfile_CustomProvider(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_CustomProviderEmptyASNList(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		provider {
 			custom {
 				ipv4_url https://example.com/ipv4
@@ -299,7 +299,7 @@ func TestUnmarshalCaddyfile_CustomProviderEmptyASNList(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_ProviderBlockMixed(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		provider {
 			cloudflare
 			custom {
@@ -334,7 +334,7 @@ func TestUnmarshalCaddyfile_ProviderBlockMixed(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_ProviderBlockUnexpectedArgs(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		provider {
 			custom unexpected
 		}
@@ -350,7 +350,7 @@ func TestUnmarshalCaddyfile_ProviderBlockUnexpectedArgs(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_CustomProviderASNListBrackets(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		provider {
 			custom {
 				asn_list [13335, 20940]
@@ -372,7 +372,7 @@ func TestUnmarshalCaddyfile_CustomProviderASNListBrackets(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_InvalidArgument(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges unexpected_arg`
+	input := `cdn_ranges unexpected_arg`
 
 	d := caddyfile.NewTestDispenser(input)
 	module := &CaddyTrustedProxiesCDN{lock: &sync.RWMutex{}}
@@ -384,7 +384,7 @@ func TestUnmarshalCaddyfile_InvalidArgument(t *testing.T) {
 }
 
 func TestUnmarshalCaddyfile_InvalidOption(t *testing.T) {
-	input := `trusted_proxies_cdn_ranges {
+	input := `cdn_ranges {
 		invalid_option value
 	}`
 
