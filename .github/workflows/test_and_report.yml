@@ -39,7 +39,9 @@ jobs:
 
       - name: Export Module Name
         id: export_module_name
-        run: echo "MODULE_NAME=$(go mod edit -json | jq -r '.Module.Path')" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "MODULE_NAME=$(go mod edit -json | jq -r '.Module.Path')" >> "$GITHUB_OUTPUT"
+          echo "MODULE_NAME_V2=$(cd v2 && go mod edit -json | jq -r '.Module.Path')" >> "$GITHUB_OUTPUT"
 
       - name: Run linters # cSpell: words gofmt
         run: |
@@ -66,5 +68,13 @@ jobs:
         with:
           files: coverage.out
           add-prefix: ${{ steps.export_module_name.outputs.MODULE_NAME }}
+          verbose: true
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+
+      - name: Publish code coverage (v2) # cSpell: words qltysh qlty-action qlty
+        uses: qltysh/qlty-action/coverage@v2
+        with:
+          files: v2/coverage-v2.out
+          add-prefix: ${{ steps.export_module_name.outputs.MODULE_NAME_V2 }}
           verbose: true
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}

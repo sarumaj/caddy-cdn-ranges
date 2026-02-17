@@ -33,32 +33,30 @@ jobs:
 
       - name: Export Module Name
         id: export_module_name
-        run: echo "MODULE_NAME=$(go mod edit -json | jq -r '.Module.Path')" >> "$GITHUB_OUTPUT"
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          MODULE_DIR="."
+          if [[ "$TAG_NAME" == v2.* ]]; then
+            MODULE_DIR="v2"
+          fi
+          echo "MODULE_DIR=$MODULE_DIR" >> "$GITHUB_OUTPUT"
+          echo "MODULE_NAME=$(cd "$MODULE_DIR" && go mod edit -json | jq -r '.Module.Path')" >> "$GITHUB_OUTPUT"
 
       - name: Run linters # cSpell: words gofmt
         run: |
           gofmt -s -d $(find . -type f -name '*.go'| grep -v "/vendor/")
           golangci-lint run -v && golangci-lint run -v --exclude-dirs-use-default -e printf
         shell: bash
-
-      - name: Run linters (v2)
-        run: |
-          cd v2
-          golangci-lint run -v && golangci-lint run -v --exclude-dirs-use-default -e printf
-        shell: bash
+        working-directory: ${{ steps.export_module_name.outputs.MODULE_DIR }}
 
       - name: Run tests with coverage # cSpell: words coverprofile
         run: go test ./... -coverprofile=coverage.out
-
-      - name: Run tests with coverage (v2)
-        run: |
-          cd v2
-          go test ./... -coverprofile=coverage-v2.out
+        working-directory: ${{ steps.export_module_name.outputs.MODULE_DIR }}
 
       - name: Publish code coverage # cSpell: words qltysh qlty
         uses: qltysh/qlty-action/coverage@v2
         with:
-          files: coverage.out
+          files: ${{ steps.export_module_name.outputs.MODULE_DIR }}/coverage.out
           add-prefix: ${{ steps.export_module_name.outputs.MODULE_NAME }}
           verbose: true
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
@@ -73,4 +71,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update code documentation
-        run: curl -fsSL https://proxy.golang.org/${{ steps.export_module_name.outputs.MODULE_NAME }}/@v/${{ github.ref_name }}.info
+        run: |
+          MODULE_PATH="${{ steps.export_module_name.outputs.MODULE_NAME }}"
+          TAG_NAME="${{ github.ref_name }}"
+          curl -fsSL "https://proxy.golang.org/$MODULE_PATH/@v/$TAG_NAME.info"
