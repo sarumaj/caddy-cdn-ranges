@@ -41,8 +41,19 @@ jobs:
           golangci-lint run -v && golangci-lint run -v --exclude-dirs-use-default -e printf
         shell: bash
 
+      - name: Run linters (v2)
+        run: |
+          cd v2
+          golangci-lint run -v && golangci-lint run -v --exclude-dirs-use-default -e printf
+        shell: bash
+
       - name: Run tests with coverage # cSpell: words coverprofile
         run: go test ./... -coverprofile=coverage.out
+
+      - name: Run tests with coverage (v2)
+        run: |
+          cd v2
+          go test ./... -coverprofile=coverage-v2.out
 
       - name: Publish code coverage # cSpell: words qltysh qlty
         uses: qltysh/qlty-action/coverage@v2

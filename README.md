@@ -30,7 +30,7 @@ Trusted proxies are critical for applications behind reverse proxies or load bal
 {
   servers {
     trusted_proxies {
-      source trusted_proxies_cdn_ranges {
+      source cdn_ranges {
         interval 24h
         provider cloudflare cloudfront
         concurrency 5
@@ -48,7 +48,7 @@ Custom provider block form:
 {
   servers {
     trusted_proxies {
-      source trusted_proxies_cdn_ranges {
+      source cdn_ranges {
         provider {
           cloudflare
           custom_cdn {
@@ -192,7 +192,7 @@ Use `xcaddy` to build a Caddy binary that includes this module:
 
 ```bash
 xcaddy build \
-  --with github.com/sarumaj/caddy-cdn-ranges
+  --with github.com/sarumaj/caddy-cdn-ranges/v2
 ```
 
 Example Dockerfile that builds a custom Caddy image with this module:
@@ -205,7 +205,7 @@ WORKDIR /build
 ENV GOTOOLCHAIN=go1.25.0
 
 RUN xcaddy build \
-  --with github.com/sarumaj/caddy-cdn-ranges
+  --with github.com/sarumaj/caddy-cdn-ranges/v2
 
 FROM caddy:2.11-alpine
 COPY --from=builder /build/caddy /usr/bin/caddy
