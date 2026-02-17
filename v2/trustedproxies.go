@@ -14,7 +14,8 @@ import (
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile" // cSpell: words caddyconfig caddyfile
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"     // cSpell: words caddyhttp
 	"github.com/taythebot/cdn-ranges/provider"              // cSpell: words taythebot
-	"golang.org/x/sync/errgroup"                            // cSpell: words errgroup
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup" // cSpell: words errgroup
 )
 
 func init() {
@@ -148,27 +149,65 @@ func (s *CaddyTrustedProxiesCDN) Provision(ctx caddy.Context) error {
 		s.setIPv6(true)
 	}
 
+	providers, err := s.resolveProviders()
+	if err != nil {
+		s.ctx.Logger().Error("failed to resolve providers", zap.Error(err))
+		return err
+	}
+
+	for _, p := range providers {
+		s.ctx.Logger().Info("configured provider", zap.String("name", p.Name()))
+	}
+
 	// update cron
 	go func() {
 		ticker := time.NewTicker(time.Duration(s.Interval))
-		s.lock.Lock()
-		s.ranges, _ = s.fetchPrefixes()
-		s.lock.Unlock()
+
+		if prefixes, err := s.fetchPrefixes(providers); err != nil {
+			s.ctx.Logger().Error(
+				"failed to fetch netip.Prefixes",
+				zap.Error(err),
+				zap.Time("next_update", time.Now().Add(time.Duration(time.Duration(s.Interval)))),
+			)
+		} else {
+			s.lock.Lock()
+			s.ranges = prefixes
+			s.lock.Unlock()
+			s.ctx.Logger().Info(
+				"successfully fetched netip.Prefixes",
+				zap.Int("count", len(s.ranges)),
+				zap.Int("providers", len(s.Providers)),
+				zap.Bool("ipv4", s.getIPv4()),
+				zap.Bool("ipv6", s.getIPv6()),
+				zap.Time("next_update", time.Now().Add(time.Duration(s.Interval))),
+			)
+		}
 
 		for {
 			select {
-			case <-ticker.C:
-				prefixes, err := s.fetchPrefixes()
+			case tick := <-ticker.C:
+				prefixes, err := s.fetchPrefixes(providers)
 				if err != nil {
-					break
+					s.ctx.Logger().Error("failed to fetch netip.Prefixes", zap.Error(err), zap.Time("next_attempt", tick.Add(time.Duration(s.Interval))))
+					continue
 				}
 
 				s.lock.Lock()
 				s.ranges = prefixes
 				s.lock.Unlock()
 
+				s.ctx.Logger().Info(
+					"successfully fetched netip.Prefixes",
+					zap.Int("count", len(s.ranges)),
+					zap.Int("providers", len(s.Providers)),
+					zap.Bool("ipv4", s.getIPv4()),
+					zap.Bool("ipv6", s.getIPv6()),
+					zap.Time("next_update", tick.Add(time.Duration(s.Interval))),
+				)
+
 			case <-s.ctx.Done():
 				ticker.Stop()
+				s.ctx.Logger().Info("stopping CDN ranges fetcher due to context cancellation")
 				return
 
 			}
@@ -177,12 +216,7 @@ func (s *CaddyTrustedProxiesCDN) Provision(ctx caddy.Context) error {
 	return nil
 }
 
-func (s *CaddyTrustedProxiesCDN) fetchPrefixes() ([]netip.Prefix, error) {
-	providers, err := s.resolveProviders()
-	if err != nil {
-		return nil, err
-	}
-
+func (s *CaddyTrustedProxiesCDN) fetchPrefixes(providers []provider.Provider) ([]netip.Prefix, error) {
 	queue := make(chan provider.Provider, len(providers))
 	for _, p := range providers {
 		queue <- p

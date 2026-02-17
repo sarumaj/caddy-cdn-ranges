@@ -7,6 +7,7 @@ require (
 	github.com/caddyserver/caddy/v2 v2.10.2
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/taythebot/cdn-ranges v0.0.0-20250217092105-57d07edb60df
+	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.16.0
 )
 
@@ -112,7 +113,6 @@ require (
 	go.uber.org/mock v0.5.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/ratelimit v0.3.1 // indirect
-	go.uber.org/zap v1.27.0 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20250305170421-49bf5b80c810 // indirect

@@ -410,7 +410,16 @@ func TestFetchPrefixes_AllProviders(t *testing.T) {
 		IPv6:        boolPtr(true),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 2 {
+		t.Fatalf("Expected 2 resolved providers, got %d", len(providers))
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes failed: %v", err)
 	}
@@ -441,7 +450,20 @@ func TestFetchPrefixes_SpecificProvider(t *testing.T) {
 		IPv6:        boolPtr(true),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 1 {
+		t.Fatalf("Expected 1 resolved provider, got %d", len(providers))
+	}
+
+	if providers[0].Name() != "Cloudflare" {
+		t.Fatalf("Expected resolved provider to be Cloudflare, got %s", providers[0].Name())
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes failed: %v", err)
 	}
@@ -476,13 +498,17 @@ func TestFetchPrefixes_InvalidProvider(t *testing.T) {
 		IPv6:        boolPtr(true),
 	}
 
-	_, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
 	if err == nil {
 		t.Error("Expected error for invalid provider")
 	}
 
 	if !strings.Contains(err.Error(), "no valid providers found") {
 		t.Errorf("Expected 'no valid providers found' error, got: %v", err)
+	}
+
+	if _, err := module.fetchPrefixes(providers); err != nil {
+		t.Errorf("Unexpected error from fetchPrefixes with invalid provider: %v", err)
 	}
 }
 
@@ -499,7 +525,24 @@ func TestFetchPrefixes_CaseInsensitive(t *testing.T) {
 		IPv6:        boolPtr(false),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 2 {
+		t.Fatalf("Expected 2 resolved providers, got %d", len(providers))
+	}
+
+	if providers[0].Name() != "Cloudflare" {
+		t.Fatalf("Expected first resolved provider to be Cloudflare, got %s", providers[0].Name())
+	}
+
+	if providers[1].Name() != "Cloudfront" {
+		t.Fatalf("Expected second resolved provider to be Cloudfront, got %s", providers[1].Name())
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes failed: %v", err)
 	}
@@ -522,7 +565,20 @@ func TestFetchPrefixes_IPv4Only(t *testing.T) {
 		IPv6:        boolPtr(false),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 1 {
+		t.Fatalf("Expected 1 resolved provider, got %d", len(providers))
+	}
+
+	if providers[0].Name() != "Cloudflare" {
+		t.Fatalf("Expected resolved provider to be Cloudflare, got %s", providers[0].Name())
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes failed: %v", err)
 	}
@@ -552,7 +608,20 @@ func TestFetchPrefixes_IPv6Only(t *testing.T) {
 		IPv6:        boolPtr(true),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 1 {
+		t.Fatalf("Expected 1 resolved provider, got %d", len(providers))
+	}
+
+	if providers[0].Name() != "Cloudflare" {
+		t.Fatalf("Expected resolved provider to be Cloudflare, got %s", providers[0].Name())
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes failed: %v", err)
 	}
@@ -583,7 +652,16 @@ func TestFetchPrefixes_HighConcurrency(t *testing.T) {
 		IPv6:        boolPtr(true),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 2 {
+		t.Fatalf("Expected 2 resolved providers, got %d", len(providers))
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes with high concurrency failed: %v", err)
 	}
@@ -658,7 +736,20 @@ func TestFetchPrefixes_CustomProvider(t *testing.T) {
 		IPv6:        boolPtr(false),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 1 {
+		t.Fatalf("Expected 1 resolved provider, got %d", len(providers))
+	}
+
+	if providers[0].Name() != "Custom" {
+		t.Fatalf("Expected resolved provider to be Custom, got %s", providers[0].Name())
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes failed: %v", err)
 	}
@@ -681,7 +772,24 @@ func TestFetchPrefixes_MixedProviders(t *testing.T) {
 		IPv6:        boolPtr(false),
 	}
 
-	prefixes, err := module.fetchPrefixes()
+	providers, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(providers) != 2 {
+		t.Fatalf("Expected 2 resolved providers, got %d", len(providers))
+	}
+
+	if providers[0].Name() != "Cloudflare" {
+		t.Fatalf("Expected first resolved provider to be Cloudflare, got %s", providers[0].Name())
+	}
+
+	if providers[1].Name() != "Custom" {
+		t.Fatalf("Expected second resolved provider to be Custom, got %s", providers[1].Name())
+	}
+
+	prefixes, err := module.fetchPrefixes(providers)
 	if err != nil {
 		t.Fatalf("fetchPrefixes failed: %v", err)
 	}
@@ -700,9 +808,17 @@ func TestFetchPrefixes_UnsupportedProviderType(t *testing.T) {
 		IPv6:        boolPtr(true),
 	}
 
-	_, err := module.fetchPrefixes()
-	if err == nil || !strings.Contains(err.Error(), "unsupported provider type") {
-		t.Fatalf("Expected unsupported provider type error, got %v", err)
+	providers, err := module.resolveProviders()
+	if err == nil {
+		t.Error("Expected error for unsupported provider type")
+	}
+
+	if !strings.Contains(err.Error(), "unsupported provider type") {
+		t.Errorf("Expected 'unsupported provider type' error, got: %v", err)
+	}
+
+	if _, err := module.fetchPrefixes(providers); err != nil {
+		t.Fatalf("Unexpected error from fetchPrefixes with unsupported provider type: %v", err)
 	}
 }
 
