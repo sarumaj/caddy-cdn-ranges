@@ -2,6 +2,7 @@ package caddy_cdn_ranges
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/netip"
 	"strings"
@@ -272,6 +273,171 @@ func TestUnmarshalCaddyfile_CustomProvider(t *testing.T) {
 
 	if len(providerConfig.ASNList) != 2 || providerConfig.ASNList[0] != 13335 || providerConfig.ASNList[1] != 20940 {
 		t.Fatalf("Expected ASN list [13335 20940], got %v", providerConfig.ASNList)
+	}
+}
+
+func TestUnmarshalJSON_CustomProvider(t *testing.T) {
+	input := []byte(`{
+		"interval": "1h",
+		"provider": [
+			{
+				"cdnvideo": {
+					"ipv4_url": [
+						"https://api.cdnvideo.ru/app/nodes/v2/ip2origin/?with_extra_zones=true",
+						"data[].IPv4_subnet"
+					]
+				}
+			}
+		],
+		"ipv4": true,
+		"ipv6": false
+	}`)
+
+	var module CaddyTrustedProxiesCDN
+	if err := json.Unmarshal(input, &module); err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	if len(module.Providers) != 1 {
+		t.Fatalf("Expected 1 raw provider, got %d", len(module.Providers))
+	}
+
+	if _, ok := module.Providers[0].(map[string]interface{}); !ok {
+		t.Fatalf("Expected raw JSON provider to be map[string]interface{}, got %T", module.Providers[0])
+	}
+
+	resolvedProviders, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(resolvedProviders) != 1 {
+		t.Fatalf("Expected 1 resolved provider, got %d", len(resolvedProviders))
+	}
+
+	providerConfig, ok := resolvedProviders[0].(*Provider)
+	if !ok {
+		t.Fatalf("Expected resolved provider to be *Provider, got %T", resolvedProviders[0])
+	}
+
+	if providerConfig.ProviderName != "cdnvideo" {
+		t.Fatalf("Expected provider name cdnvideo, got %s", providerConfig.ProviderName)
+	}
+
+	if providerConfig.IPv4_URL == nil {
+		t.Fatalf("Expected ipv4_url to be set")
+	}
+
+	if providerConfig.IPv4_URL.URL != "https://api.cdnvideo.ru/app/nodes/v2/ip2origin/?with_extra_zones=true" {
+		t.Fatalf("Unexpected ipv4_url URL: %s", providerConfig.IPv4_URL.URL)
+	}
+
+	if providerConfig.IPv4_URL.JMESPath != "data[].IPv4_subnet" {
+		t.Fatalf("Expected ipv4_url JMESPath data[].IPv4_subnet, got %s", providerConfig.IPv4_URL.JMESPath)
+	}
+
+	if providerConfig.IPv6_URL != nil {
+		t.Fatalf("Expected ipv6_url to be nil")
+	}
+}
+
+func TestUnmarshalJSON_CustomProviderPullConfigObject(t *testing.T) {
+	input := []byte(`{
+		"provider": [
+			{
+				"custom": {
+					"ipv4_url": {
+						"url": "https://example.com/ipv4.json",
+						"jmespath": "prefixes[].cidr"
+					},
+					"asn_list": [13335, 20940]
+				}
+			}
+		]
+	}`)
+
+	var module CaddyTrustedProxiesCDN
+	if err := json.Unmarshal(input, &module); err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	resolvedProviders, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(resolvedProviders) != 1 {
+		t.Fatalf("Expected 1 resolved provider, got %d", len(resolvedProviders))
+	}
+
+	providerConfig, ok := resolvedProviders[0].(*Provider)
+	if !ok {
+		t.Fatalf("Expected resolved provider to be *Provider, got %T", resolvedProviders[0])
+	}
+
+	if providerConfig.ProviderName != "custom" {
+		t.Fatalf("Expected provider name custom, got %s", providerConfig.ProviderName)
+	}
+
+	if providerConfig.IPv4_URL == nil {
+		t.Fatalf("Expected ipv4_url to be set")
+	}
+
+	if providerConfig.IPv4_URL.URL != "https://example.com/ipv4.json" {
+		t.Fatalf("Unexpected ipv4_url URL: %s", providerConfig.IPv4_URL.URL)
+	}
+
+	if providerConfig.IPv4_URL.JMESPath != "prefixes[].cidr" {
+		t.Fatalf("Unexpected ipv4_url JMESPath: %s", providerConfig.IPv4_URL.JMESPath)
+	}
+
+	if len(providerConfig.ASNList) != 2 || providerConfig.ASNList[0] != 13335 || providerConfig.ASNList[1] != 20940 {
+		t.Fatalf("Expected ASN list [13335 20940], got %v", providerConfig.ASNList)
+	}
+}
+
+func TestUnmarshalJSON_MixedBuiltinAndCustomProviders(t *testing.T) {
+	input := []byte(`{
+		"provider": [
+			"cloudflare",
+			{
+				"cdnvideo": {
+					"ipv4_url": [
+						"https://api.cdnvideo.ru/app/nodes/v2/ip2origin/?with_extra_zones=false",
+						"data[].IPv4_subnet"
+					]
+				}
+			}
+		],
+		"ipv4": true,
+		"ipv6": false
+	}`)
+
+	var module CaddyTrustedProxiesCDN
+	if err := json.Unmarshal(input, &module); err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	resolvedProviders, err := module.resolveProviders()
+	if err != nil {
+		t.Fatalf("resolveProviders failed: %v", err)
+	}
+
+	if len(resolvedProviders) != 2 {
+		t.Fatalf("Expected 2 resolved providers, got %d", len(resolvedProviders))
+	}
+
+	if resolvedProviders[0].Name() != "Cloudflare" {
+		t.Fatalf("Expected first provider to be Cloudflare, got %s", resolvedProviders[0].Name())
+	}
+
+	providerConfig, ok := resolvedProviders[1].(*Provider)
+	if !ok {
+		t.Fatalf("Expected second provider to be *Provider, got %T", resolvedProviders[1])
+	}
+
+	if providerConfig.ProviderName != "cdnvideo" {
+		t.Fatalf("Expected second provider name cdnvideo, got %s", providerConfig.ProviderName)
 	}
 }
 

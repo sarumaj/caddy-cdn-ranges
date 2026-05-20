@@ -2,6 +2,7 @@ package caddy_cdn_ranges
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/netip"
@@ -283,6 +284,14 @@ func (s *CaddyTrustedProxiesCDN) resolveProviders() ([]provider.Provider, error)
 			providers = append(providers, v)
 		case provider.Provider:
 			providers = append(providers, v)
+		case map[string]interface{}:
+			for name, rawConfig := range v {
+				providerConfig, err := providerFromJSONMap(name, rawConfig)
+				if err != nil {
+					return nil, err
+				}
+				providers = append(providers, providerConfig)
+			}
 		default:
 			return nil, fmt.Errorf("unsupported provider type: %T", specified)
 		}
@@ -296,6 +305,140 @@ func (s *CaddyTrustedProxiesCDN) resolveProviders() ([]provider.Provider, error)
 	}
 
 	return providers, nil
+}
+
+func providerFromJSONMap(name string, rawConfig any) (*Provider, error) {
+	configMap, ok := rawConfig.(map[string]interface{})
+	if !ok {
+		configBytes, err := json.Marshal(rawConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal custom provider %q config: %w", name, err)
+		}
+
+		var providerConfig Provider
+		if err := json.Unmarshal(configBytes, &providerConfig); err != nil {
+			return nil, fmt.Errorf("failed to decode custom provider %q config: %w", name, err)
+		}
+
+		providerConfig.ProviderName = name
+		return &providerConfig, nil
+	}
+
+	providerConfig := &Provider{ProviderName: name}
+	for key, value := range configMap {
+		switch key {
+		case "ipv4_url":
+			pullConfig, err := pullConfigFromJSONValue(key, value)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode custom provider %q %s: %w", name, key, err)
+			}
+			providerConfig.IPv4_URL = pullConfig
+		case "ipv6_url":
+			pullConfig, err := pullConfigFromJSONValue(key, value)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode custom provider %q %s: %w", name, key, err)
+			}
+			providerConfig.IPv6_URL = pullConfig
+		case "asn_list":
+			asnList, err := asnListFromJSONValue(value)
+			if err != nil {
+				return nil, fmt.Errorf("failed to decode custom provider %q %s: %w", name, key, err)
+			}
+			providerConfig.ASNList = asnList
+		default:
+			return nil, fmt.Errorf("unsupported custom provider %q field %q", name, key)
+		}
+	}
+
+	return providerConfig, nil
+}
+
+func pullConfigFromJSONValue(fieldName string, value any) (*PullConfig, error) {
+	switch v := value.(type) {
+	case []interface{}:
+		if len(v) == 0 || len(v) > 2 {
+			return nil, fmt.Errorf("expected [url] or [url, jmespath], got %d items", len(v))
+		}
+
+		url, ok := v[0].(string)
+		if !ok || strings.TrimSpace(url) == "" {
+			return nil, fmt.Errorf("first item must be a non-empty URL string")
+		}
+
+		pullConfig := &PullConfig{
+			URL:      strings.TrimSpace(url),
+			JMESPath: "@",
+		}
+
+		if len(v) == 2 {
+			jmesPath, ok := v[1].(string)
+			if !ok || strings.TrimSpace(jmesPath) == "" {
+				return nil, fmt.Errorf("second item must be a non-empty JMESPath string")
+			}
+			pullConfig.JMESPath = strings.TrimSpace(jmesPath)
+		}
+
+		return pullConfig, nil
+	case map[string]interface{}:
+		return pullConfigFromJSONMap(fieldName, v)
+	default:
+		return nil, fmt.Errorf("expected array or object, got %T", value)
+	}
+}
+
+func pullConfigFromJSONMap(fieldName string, value map[string]interface{}) (*PullConfig, error) {
+	urlValue, ok := value["url"]
+	if !ok {
+		return nil, fmt.Errorf("missing url")
+	}
+
+	url, ok := urlValue.(string)
+	if !ok || strings.TrimSpace(url) == "" {
+		return nil, fmt.Errorf("url must be a non-empty string")
+	}
+
+	pullConfig := &PullConfig{
+		URL:      strings.TrimSpace(url),
+		JMESPath: "@",
+	}
+
+	for _, key := range []string{"jmespath", "jmes_path", "JMESPath"} {
+		jmesPathValue, ok := value[key]
+		if !ok {
+			continue
+		}
+
+		jmesPath, ok := jmesPathValue.(string)
+		if !ok || strings.TrimSpace(jmesPath) == "" {
+			return nil, fmt.Errorf("%s must be a non-empty string", key)
+		}
+
+		pullConfig.JMESPath = strings.TrimSpace(jmesPath)
+		break
+	}
+
+	return pullConfig, nil
+}
+
+func asnListFromJSONValue(value any) ([]int, error) {
+	items, ok := value.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected array, got %T", value)
+	}
+
+	asnList := make([]int, 0, len(items))
+	for _, item := range items {
+		switch v := item.(type) {
+		case float64:
+			asnList = append(asnList, int(v))
+		case int:
+			asnList = append(asnList, v)
+		default:
+			return nil, fmt.Errorf("expected numeric ASN, got %T", item)
+		}
+	}
+
+	return asnList, nil
 }
 
 func (s *CaddyTrustedProxiesCDN) GetIPRanges(_ *http.Request) []netip.Prefix {
