@@ -63,6 +63,37 @@ Custom provider block form:
 }
 ```
 
+JSON configuration example:
+
+```json
+{
+  "interval": "24h",
+  "provider": [
+    "cloudflare",
+    {
+      "custom_cdn": {
+        "ipv4_url": ["https://example.com/ipv4.json", "prefixes[].cidr"],
+        "ipv6_url": {
+          "url": "https://example.com/ipv6.json",
+          "jmespath": "prefixes[].cidr"
+        },
+        "asn_list": [13335, 20940]
+      }
+    }
+  ],
+  "concurrency": 5,
+  "ipv4": true,
+  "ipv6": true
+}
+```
+
+The JSON shape mirrors the Caddyfile options:
+
+- `provider` can contain built-in provider names or custom provider objects.
+- Custom provider values support `ipv4_url`, `ipv6_url`, and `asn_list`.
+- `ipv4_url` and `ipv6_url` accept either `[url, jmespath]` arrays or `{ "url": ..., "jmespath": ... }` objects.
+- `asn_list` accepts a JSON array of ASN numbers.
+
 ## Custom Provider Configuration
 
 Define custom providers inline in your Caddyfile to fetch from arbitrary sources:

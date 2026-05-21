@@ -277,7 +277,8 @@ func TestUnmarshalCaddyfile_CustomProvider(t *testing.T) {
 }
 
 func TestUnmarshalJSON_CustomProvider(t *testing.T) {
-	input := []byte(`{
+	// cSpell: words cdnvideo jmespath
+	input := []byte(`{ 
 		"interval": "1h",
 		"provider": [
 			{
