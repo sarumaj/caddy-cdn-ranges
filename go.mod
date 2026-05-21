@@ -1,7 +1,7 @@
 // cSpell:disable
 module github.com/sarumaj/caddy-cdn-ranges
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/caddyserver/caddy/v2 v2.11.3
