@@ -202,7 +202,7 @@ FROM caddy:2.11-builder-alpine AS builder
 
 WORKDIR /build
 
-ENV GOTOOLCHAIN=go1.25.0
+ENV GOTOOLCHAIN=go1.26.0
 
 RUN xcaddy build \
   --with github.com/sarumaj/caddy-cdn-ranges/v2
