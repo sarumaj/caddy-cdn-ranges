@@ -1,14 +1,14 @@
 // cSpell:disable
 module github.com/sarumaj/caddy-cdn-ranges/v2
 
-go 1.25.1
+go 1.26.0
 
 require (
 	github.com/caddyserver/caddy/v2 v2.11.4
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/taythebot/cdn-ranges v0.0.0-20250217092105-57d07edb60df
 	go.uber.org/zap v1.28.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 )
 
 require (
