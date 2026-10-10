@@ -7,7 +7,7 @@ require (
 	github.com/caddyserver/caddy/v2 v2.11.7
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/taythebot/cdn-ranges v0.0.0-20250217092105-57d07edb60df
-	golang.org/x/sync v0.23.0
+	golang.org/x/sync v0.24.0
 )
 
 require (
