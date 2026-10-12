@@ -49,13 +49,6 @@ jobs:
     - name: Run tests with coverage
       run: go test ./... -coverprofile=coverage.out
       working-directory: ${{ steps.export_module_name.outputs.MODULE_DIR }}
-    - name: Publish code coverage
-      uses: https://github.com/qltysh/qlty-action/coverage@v2
-      with:
-        files: ${{ steps.export_module_name.outputs.MODULE_DIR }}/coverage.out
-        add-prefix: ${{ steps.export_module_name.outputs.MODULE_NAME }}
-        verbose: true
-        token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
     - name: Collect the release files
       shell: bash
       run: |
