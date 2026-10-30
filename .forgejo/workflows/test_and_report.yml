@@ -35,12 +35,12 @@ jobs:
     - name: Run linters
       run: |
         gofmt -s -d $(find . -type f -name '*.go'| grep -v "/vendor/")
-        golangci-lint run -v && golangci-lint run -v --exclude-dirs-use-default -e printf
+        golangci-lint run -v --timeout 5m && golangci-lint run -v --timeout 5m --exclude-dirs-use-default -e printf
       shell: bash
     - name: Run linters (v2)
       run: |
         cd v2
-        golangci-lint run -v && golangci-lint run -v --exclude-dirs-use-default -e printf
+        golangci-lint run -v --timeout 5m && golangci-lint run -v --timeout 5m --exclude-dirs-use-default -e printf
       shell: bash
     - name: Run tests with coverage
       run: go test ./... -coverprofile=coverage.out
