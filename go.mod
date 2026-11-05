@@ -4,7 +4,7 @@ module github.com/sarumaj/caddy-cdn-ranges
 go 1.26.0
 
 require (
-	github.com/caddyserver/caddy/v2 v2.11.8
+	github.com/caddyserver/caddy/v2 v2.11.9
 	github.com/jmespath/go-jmespath v0.4.0
 	github.com/taythebot/cdn-ranges v0.0.0-20250217092105-57d07edb60df
 	golang.org/x/sync v0.24.0
