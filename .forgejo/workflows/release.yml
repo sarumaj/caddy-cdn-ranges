@@ -6,6 +6,14 @@ name: release
   push:
     tags:
     - v*
+  # Run by hand to retry a tag's release from main, with the tag in the field
+  # (a tag made before this trigger existed has no workflow_dispatch of its own).
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The tag to release (vX.Y.Z); empty for the tag chosen above
+        type: string
+        required: false
 jobs:
   release:
     strategy:
@@ -18,9 +26,18 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: Release caddy-cdn-ranges
     steps:
+    - name: Check the tag
+      env:
+        TAG: ${{ inputs.tag || github.ref_name }}
+      run: |
+        case "$TAG" in
+          v[0-9]*) ;;
+          *) echo "::error::$TAG is not a release tag: name one in the tag field"; exit 1 ;;
+        esac
     - name: Check out repository
       uses: https://github.com/actions/checkout@v7
       with:
+        ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
         fetch-depth: 0
     - name: Install go
       uses: https://github.com/actions/setup-go@v7
@@ -32,7 +49,7 @@ jobs:
     - name: Export Module Name
       id: export_module_name
       run: |
-        TAG_NAME="${{ github.ref_name }}"
+        TAG_NAME="${{ inputs.tag || github.ref_name }}"
         MODULE_DIR="."
         if [[ "$TAG_NAME" == v2.* ]]; then
           MODULE_DIR="v2"
@@ -56,7 +73,7 @@ jobs:
       id: release_notes
       shell: bash
       env:
-        TAG: ${{ github.ref_name }}
+        TAG: ${{ inputs.tag || github.ref_name }}
       run: |
         if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
           git fetch --quiet --unshallow --tags
@@ -80,8 +97,8 @@ jobs:
         direction: upload
         url: ${{ github.server_url }}
         repo: ${{ github.repository }}
-        tag: ${{ github.ref_name }}
-        title: ${{ github.ref_name }}
+        tag: ${{ inputs.tag || github.ref_name }}
+        title: ${{ inputs.tag || github.ref_name }}
         release-dir: .forgejo-release
         prerelease: false
         override: true
@@ -89,5 +106,5 @@ jobs:
     - name: Update code documentation
       run: |
         MODULE_PATH="${{ steps.export_module_name.outputs.MODULE_NAME }}"
-        TAG_NAME="${{ github.ref_name }}"
+        TAG_NAME="${{ inputs.tag || github.ref_name }}"
         curl -fsSL "https://proxy.golang.org/$MODULE_PATH/@v/$TAG_NAME.info"
