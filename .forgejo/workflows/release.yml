@@ -100,6 +100,8 @@ jobs:
         tag: ${{ inputs.tag || github.ref_name }}
         title: ${{ inputs.tag || github.ref_name }}
         release-dir: .forgejo-release
+        # No files to attach: the upload of the empty directory's unmatched glob fails.
+        skip-assets: true
         prerelease: false
         override: true
         release-notes: ${{ steps.release_notes.outputs.notes }}
